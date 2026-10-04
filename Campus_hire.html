@@ -1,0 +1,1707 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CampusHire AI - Smart Placement Management System</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            200: '#bfdbfe',
+                            300: '#93c5fd',
+                            400: '#60a5fa',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            800: '#1e40af',
+                            900: '#1e3a8a',
+                            950: '#172554',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- React & ReactDOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Prop Types (Required by Recharts UMD bundle) -->
+    <script src="https://unpkg.com/prop-types@15.8.1/prop-types.min.js"></script>
+
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Recharts CDN -->
+    <script src="https://unpkg.com/recharts@2.12.7/umd/Recharts.js"></script>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="h-full text-slate-800 antialiased selection:bg-brand-500 selection:text-white">
+    <div id="root" class="h-full flex flex-col"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useRef, useCallback } = React;
+        const { 
+            ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, 
+            PieChart, Pie, Cell, LineChart, Line, CartesianGrid, Legend 
+        } = window.Recharts || {};
+
+        /* ==========================================================================
+           MOCK INITIAL DATA & SEED STATE
+           ========================================================================== */
+        
+        const DEMO_USERS = {
+            student: {
+                id: "std-101",
+                name: "Alex Rivera",
+                email: "student@campushire.demo",
+                role: "STUDENT",
+                studentId: "2023CSE042",
+                department: "CSE",
+                cgpa: 8.4,
+                backlogs: 0,
+                year: "2025",
+                phone: "+91 9876543210",
+                skills: ["Java", "React", "Python", "SQL", "REST APIs", "Git"],
+                resumeScore: 84,
+                resumeUrl: "Alex_Rivera_SoftwareEngineer_Resume.pdf",
+                targetRole: "Full Stack Developer",
+                appliedCount: 6,
+                interviewsCount: 2,
+                status: "ACTIVE"
+            },
+            tpo: {
+                id: "tpo-201",
+                name: "Dr. Robert Vance",
+                email: "tpo@campushire.demo",
+                role: "TPO",
+                department: "Training & Placement Cell",
+                designation: "Head Placement Officer",
+                phone: "+91 9811223344",
+                status: "ACTIVE"
+            },
+            admin: {
+                id: "adm-301",
+                name: "Sarah Jenkins",
+                email: "admin@campushire.demo",
+                role: "ADMIN",
+                department: "System Administration",
+                phone: "+91 9900011122",
+                status: "ACTIVE"
+            }
+        };
+
+        const INITIAL_STUDENTS = [
+            { id: "std-101", name: "Alex Rivera", email: "student@campushire.demo", studentId: "2023CSE042", department: "CSE", cgpa: 8.4, backlogs: 0, year: "2025", phone: "+91 9876543210", skills: ["Java", "React", "SQL", "Git"], status: "Shortlisted", package: "12 LPA", company: "TechNova Solutions" },
+            { id: "std-102", name: "Priya Sharma", email: "priya.s@campushire.demo", studentId: "2023AIDS011", department: "AI&DS", cgpa: 9.1, backlogs: 0, year: "2025", phone: "+91 9876543211", skills: ["Python", "TensorFlow", "PyTorch", "SQL"], status: "Selected", package: "18 LPA", company: "DataMind Technologies" },
+            { id: "std-103", name: "Rohan Verma", email: "rohan.v@campushire.demo", studentId: "2023ECE088", department: "ECE", cgpa: 7.2, backlogs: 1, year: "2025", phone: "+91 9876543212", skills: ["C++", "Embedded C", "MATLAB"], status: "Applied", package: "-", company: "-" },
+            { id: "std-104", name: "Sneha Patel", email: "sneha.p@campushire.demo", studentId: "2023CSE102", department: "CSE", cgpa: 8.8, backlogs: 0, year: "2025", phone: "+91 9876543213", skills: ["Java", "Spring Boot", "Docker", "AWS"], status: "Selected", package: "14 LPA", company: "CloudSphere" },
+            { id: "std-105", name: "David Kim", email: "david.k@campushire.demo", studentId: "2023EEE019", department: "EEE", cgpa: 6.8, backlogs: 0, year: "2025", phone: "+91 9876543214", skills: ["Python", "SQL", "AutoCAD"], status: "Applied", package: "-", company: "-" }
+        ];
+
+        const INITIAL_COMPANIES = [
+            {
+                id: "comp-1",
+                name: "TechNova Solutions",
+                logo: "🚀",
+                industry: "Information Technology",
+                role: "Software Engineer - Backend",
+                location: "Bengaluru / Hybrid",
+                package: "₹12 - ₹15 LPA",
+                packageNum: 13.5,
+                type: "Full-Time",
+                minCgpa: 8.0,
+                maxBacklogs: 0,
+                depts: ["CSE", "AI&DS", "ECE"],
+                deadline: "2026-10-25",
+                skills: ["Java", "Spring Boot", "SQL", "REST APIs", "Microservices"],
+                description: "Designing resilient backend web services and cloud integrations for high-scale enterprise applications."
+            },
+            {
+                id: "comp-2",
+                name: "CloudSphere Infrastructure",
+                logo: "☁️",
+                industry: "Cloud & DevOps",
+                role: "Cloud Operations Trainee",
+                location: "Hyderabad",
+                package: "₹9.5 LPA",
+                packageNum: 9.5,
+                type: "Full-Time",
+                minCgpa: 7.0,
+                maxBacklogs: 1,
+                depts: ["CSE", "ECE", "EEE"],
+                deadline: "2026-10-30",
+                skills: ["Linux", "AWS", "Python", "Networking", "Docker"],
+                description: "Monitor and automate AWS deployment pipelines for multi-region cloud infrastructure."
+            },
+            {
+                id: "comp-3",
+                name: "DataMind Technologies",
+                logo: "🧠",
+                industry: "Artificial Intelligence",
+                role: "Associate AI / ML Specialist",
+                location: "Pune / Remote",
+                package: "₹18 LPA",
+                packageNum: 18.0,
+                type: "Full-Time",
+                minCgpa: 8.5,
+                maxBacklogs: 0,
+                depts: ["AI&DS", "CSE"],
+                deadline: "2026-11-05",
+                skills: ["Python", "PyTorch", "NLP", "Pandas", "Scikit-Learn"],
+                description: "Build generative AI pipelines and predictive models for automated financial risk mitigation."
+            },
+            {
+                id: "comp-4",
+                name: "CodeCraft Systems",
+                logo: "⚡",
+                industry: "Product Engineering",
+                role: "Frontend Developer",
+                location: "Gurugram",
+                package: "₹10 LPA",
+                packageNum: 10.0,
+                type: "Full-Time",
+                minCgpa: 7.5,
+                maxBacklogs: 0,
+                depts: ["CSE", "AI&DS", "ECE", "EEE"],
+                deadline: "2026-10-20",
+                skills: ["React", "TypeScript", "Tailwind CSS", "JavaScript", "HTML/CSS"],
+                description: "Construct clean, high-performance web user interfaces for next-gen fintech platform dashboard."
+            }
+        ];
+
+        const INITIAL_APPLICATIONS = [
+            { id: "app-1", companyId: "comp-1", companyName: "TechNova Solutions", role: "Software Engineer - Backend", appliedDate: "2026-09-12", status: "Technical Interview", stepIndex: 3, package: "₹12 LPA" },
+            { id: "app-2", companyId: "comp-4", companyName: "CodeCraft Systems", role: "Frontend Developer", appliedDate: "2026-09-20", status: "Shortlisted", stepIndex: 1, package: "₹10 LPA" },
+            { id: "app-3", companyId: "comp-2", companyName: "CloudSphere Infrastructure", role: "Cloud Operations Trainee", appliedDate: "2026-09-28", status: "Under Review", stepIndex: 0, package: "₹9.5 LPA" }
+        ];
+
+        const INITIAL_ANNOUNCEMENTS = [
+            { id: "anc-1", title: "TechNova Solutions Online Technical Assessment Scheduled", date: "Oct 12, 2026", category: "Assessment", target: "CSE & AI&DS 2025 Batch", content: "The first round online coding test will be hosted on HackerRank this Friday at 6:00 PM. Please ensure your webcams are active." },
+            { id: "anc-2", title: "Resume Building & ATS Optimization Workshop by Career Cell", date: "Oct 08, 2026", category: "Workshop", target: "All Departments", content: "Join our hands-on interactive session on tuning your resumes using AI keyword optimization tools this Wednesday." }
+        ];
+
+        const TARGET_ROLE_SKILLS = {
+            "Java Backend Developer": ["Java", "Spring Boot", "SQL", "REST APIs", "Microservices", "Docker", "Git", "JUnit"],
+            "Full Stack Developer": ["React", "TypeScript", "Node.js", "Express", "SQL", "MongoDB", "Git", "HTML/CSS"],
+            "Data Scientist / AI Engineer": ["Python", "SQL", "Pandas", "Scikit-Learn", "PyTorch", "TensorFlow", "Math/Stats"],
+            "DevOps & Cloud Engineer": ["Linux", "AWS", "Docker", "Kubernetes", "CI/CD", "Python", "Terraform", "Git"]
+        };
+
+        // Utility for Gemini AI API Calls with Offline Robust Fallbacks
+        const runAiService = async (taskType, payload, apiKey = "") => {
+            if (!apiKey) {
+                // Return rich simulated mock responses if API Key is not set
+                await new Promise(r => setTimeout(r, 1200)); // Simulate thinking latency
+                switch(taskType) {
+                    case 'RESUME_ANALYSIS':
+                        return {
+                            score: 84,
+                            atsScore: 88,
+                            technicalScore: 82,
+                            formattingScore: 90,
+                            strengths: [
+                                "Clear structured format with modern developer tech stack highlighted",
+                                "Good balance of project work with live GitHub deployment URLs",
+                                "Consistent mention of programming languages and RESTful API standards"
+                            ],
+                            improvements: [
+                                "Quantify outcomes in project bullet points (e.g., 'Improved performance by 35%')",
+                                "Include Docker and Containerization keywords for modern backend roles",
+                                "Explicitly list database indexing and SQL query optimization skills"
+                            ],
+                            suggestedKeywords: ["Docker", "Kubernetes", "Redis", "CI/CD Pipelines", "System Architecture"]
+                        };
+
+                    case 'SKILL_GAP':
+                        const targetRole = payload.targetRole || "Java Backend Developer";
+                        const reqSkills = TARGET_ROLE_SKILLS[targetRole] || TARGET_ROLE_SKILLS["Java Backend Developer"];
+                        const userSkills = payload.userSkills || [];
+                        const matched = reqSkills.filter(s => userSkills.some(us => us.toLowerCase() === s.toLowerCase()));
+                        const missing = reqSkills.filter(s => !matched.includes(s));
+                        return {
+                            role: targetRole,
+                            matchPercent: Math.round((matched.length / reqSkills.length) * 100),
+                            matchedSkills: matched,
+                            missingSkills: missing,
+                            roadmap: [
+                                `Master the core fundamentals of ${missing[0] || 'Spring Security'}`,
+                                `Build 1 full-featured open-source project incorporating ${missing[1] || 'Docker'}`,
+                                `Practice 30+ medium SQL query optimization challenges on LeetCode/HackerRank`,
+                                `Review REST architectural constraints and authentication strategies (JWT/OAuth)`
+                            ]
+                        };
+
+                    case 'JOB_MATCHING':
+                        return {
+                            matchPercentage: 89,
+                            skillsMatch: 85,
+                            resumeMatch: 90,
+                            eligibilityScore: 100,
+                            recommendation: "Strong Candidate - High chance of technical round shortlist.",
+                            keyGaps: ["Spring Security experience", "AWS Cloud basics"]
+                        };
+
+                    case 'INTERVIEW_PREP':
+                        return {
+                            questions: [
+                                { category: "Technical Core", question: "Explain the internal working of Java HashMap and how collisions are handled in Java 8+.", answerKey: "Treeifying buckets when threshold exceeds 8 elements." },
+                                { category: "System Design", question: "How would you design an idempotent payment processing API endpoint?", answerKey: "Using unique request transaction UUIDs in Redis caching layer." },
+                                { category: "DSA / Coding", question: "Describe how to find the starting node of a cycle in a Linked List using Floyd's algorithm.", answerKey: "Fast and slow pointers meeting point logic." },
+                                { category: "Behavioral", question: "Tell me about a technical conflict during your capstone project and how you resolved it.", answerKey: "Focus on communication, benchmark testing, and team consensus." }
+                            ]
+                        };
+
+                    case 'CHAT_ASSISTANT':
+                        return `Based on your profile (CGPA ${payload.cgpa || 8.4}, ${payload.department || 'CSE'}), you are in a great position for top product drives. Focus on solving 2 LC Medium questions daily and polishing your React + Node.js full stack project descriptions on your resume.`;
+                    
+                    default:
+                        return "AI Service processed task successfully.";
+                }
+            }
+
+            // Real Gemini API Request Handling
+            try {
+                const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+                let prompt = "";
+                if (taskType === 'CHAT_ASSISTANT') {
+                    prompt = `You are CampusHire AI Career Coach. User query: "${payload.prompt}". Profile: ${JSON.stringify(payload.profile)}. Provide concise, high-value advice.`;
+                } else {
+                    prompt = `Task: ${taskType}. Payload: ${JSON.stringify(payload)}. Respond with JSON format relevant to placement career preparation.`;
+                }
+
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }]
+                    })
+                });
+
+                const data = await response.json();
+                const rawText = data?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+                
+                if (taskType === 'CHAT_ASSISTANT') return rawText;
+                
+                // Attempt to parse JSON from response
+                const jsonMatch = rawText.match(/\{[\s\S]*\}/);
+                if (jsonMatch) return JSON.parse(jsonMatch[0]);
+                return { response: rawText };
+            } catch (err) {
+                console.warn("API Error, falling back to smart local response", err);
+                return runAiService(taskType, payload, ""); // Retry with fallback engine
+            }
+        };
+
+        
+        // Reusable Toast Component
+        const Toast = ({ toast, onClose }) => {
+            if (!toast) return null;
+            return (
+                <div className={`fixed bottom-5 right-5 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl text-white transition-all transform duration-300 ${
+                    toast.type === 'error' ? 'bg-red-600' : toast.type === 'info' ? 'bg-brand-600' : 'bg-emerald-600'
+                }`}>
+                    <i data-lucide={toast.type === 'error' ? 'alert-triangle' : toast.type === 'info' ? 'info' : 'check-circle'} className="w-5 h-5"></i>
+                    <span className="text-sm font-medium">{toast.message}</span>
+                    <button onClick={onClose} className="ml-2 hover:opacity-80">
+                        <i data-lucide="x" className="w-4 h-4"></i>
+                    </button>
+                </div>
+            );
+        };
+
+        // Header Navigation Bar
+        const Navbar = ({ currentUser, activeRole, onSwitchRole, onNavigate, activeTab, onLogout, notifications = [] }) => {
+            const [showNotifs, setShowNotifs] = useState(false);
+            const [mobileMenu, setMobileMenu] = useState(false);
+
+            return (
+                <header className="sticky top-0 z-40 bg-white/90 backdrop-blur-md border-b border-slate-200">
+                    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                        <div className="flex items-center justify-between h-16">
+                            
+                            {/* Logo */}
+                            <div className="flex items-center gap-3 cursor-pointer" onClick={() => onNavigate('landing')}>
+                                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-700 to-brand-500 flex items-center justify-center text-white shadow-md shadow-brand-500/20">
+                                    <i data-lucide="graduation-cap" className="w-6 h-6"></i>
+                                </div>
+                                <div>
+                                    <span className="text-lg font-bold bg-gradient-to-r from-brand-900 via-brand-700 to-brand-500 bg-clip-text text-transparent">
+                                        CampusHire <span className="text-brand-500 font-extrabold">AI</span>
+                                    </span>
+                                    <span className="block text-[10px] text-slate-400 font-medium -mt-1 tracking-wider uppercase">Smart Placement SaaS</span>
+                                </div>
+                            </div>
+
+                            {/* Public / Landing Navigation */}
+                            {!currentUser ? (
+                                <div className="hidden md:flex items-center gap-8">
+                                    <button onClick={() => onNavigate('landing')} className="text-sm font-medium text-slate-600 hover:text-brand-600 transition">Home</button>
+                                    <button onClick={() => onNavigate('features')} className="text-sm font-medium text-slate-600 hover:text-brand-600 transition">Features</button>
+                                    <button onClick={() => onNavigate('docs')} className="text-sm font-medium text-slate-600 hover:text-brand-600 transition">Architecture & Schema</button>
+                                    <div className="flex items-center gap-3 border-l border-slate-200 pl-6">
+                                        <button onClick={() => onNavigate('login')} className="text-sm font-semibold text-brand-600 hover:text-brand-700 px-3 py-2">
+                                            Sign In
+                                        </button>
+                                        <button onClick={() => onNavigate('login')} className="text-sm font-medium text-white bg-brand-600 hover:bg-brand-700 px-4 py-2 rounded-lg shadow-sm shadow-brand-500/30 transition">
+                                            Get Started
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                /* Logged In Top Bar Actions */
+                                <div className="flex items-center gap-4">
+                                    {/* Quick Role Switcher Bar */}
+                                    <div className="hidden lg:flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200">
+                                        <span className="text-xs font-semibold text-slate-500 px-2">Demo Role:</span>
+                                        {['STUDENT', 'TPO', 'ADMIN'].map((role) => (
+                                            <button
+                                                key={role}
+                                                onClick={() => onSwitchRole(role.toLowerCase())}
+                                                className={`px-3 py-1 text-xs font-semibold rounded-lg transition-all ${
+                                                    activeRole === role 
+                                                        ? 'bg-white text-brand-700 shadow-xs border border-slate-200/80' 
+                                                        : 'text-slate-600 hover:text-slate-900'
+                                                }`}
+                                            >
+                                                {role}
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    {/* Notifications Icon */}
+                                    <div className="relative">
+                                        <button 
+                                            onClick={() => setShowNotifs(!showNotifs)}
+                                            className="p-2 text-slate-600 hover:text-brand-600 rounded-xl hover:bg-slate-100 relative transition"
+                                        >
+                                            <i data-lucide="bell" className="w-5 h-5"></i>
+                                            {notifications.length > 0 && (
+                                                <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full ring-2 ring-white"></span>
+                                            )}
+                                        </button>
+
+                                        {showNotifs && (
+                                            <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-slate-200 py-2 z-50 animate-in fade-in slide-in-from-top-2">
+                                                <div className="px-4 py-2 border-b border-slate-100 flex items-center justify-between">
+                                                    <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">Notifications</span>
+                                                    <span className="text-[10px] bg-brand-100 text-brand-700 px-2 py-0.5 rounded-full font-semibold">{notifications.length} New</span>
+                                                </div>
+                                                <div className="max-h-64 overflow-y-auto divide-y divide-slate-100 custom-scrollbar">
+                                                    {notifications.map((n, idx) => (
+                                                        <div key={idx} className="p-3 hover:bg-slate-50 transition">
+                                                            <p className="text-xs font-semibold text-slate-800">{n.title}</p>
+                                                            <p className="text-[11px] text-slate-500 mt-0.5">{n.time}</p>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* User Avatar Dropdown */}
+                                    <div className="flex items-center gap-3 border-l border-slate-200 pl-4">
+                                        <div className="w-9 h-9 rounded-full bg-brand-100 text-brand-700 font-bold text-sm flex items-center justify-center border border-brand-200 shadow-xs">
+                                            {currentUser.name ? currentUser.name.charAt(0) : 'U'}
+                                        </div>
+                                        <div className="hidden sm:block text-left">
+                                            <div className="text-xs font-bold text-slate-800 leading-tight">{currentUser.name}</div>
+                                            <div className="text-[10px] font-semibold text-brand-600">{activeRole}</div>
+                                        </div>
+                                        <button 
+                                            onClick={onLogout}
+                                            title="Logout"
+                                            className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg transition"
+                                        >
+                                            <i data-lucide="log-out" className="w-4 h-4"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </header>
+            );
+        };
+
+        const LandingPage = ({ onGetStarted, onNavigate }) => {
+            return (
+                <div className="bg-slate-50 min-h-screen flex flex-col">
+                    {/* Hero Section */}
+                    <section className="relative overflow-hidden pt-12 pb-20 lg:pt-20 lg:pb-28 bg-gradient-to-b from-white via-slate-50 to-brand-50/30">
+                        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+                            <div className="text-center max-w-3xl mx-auto">
+                                <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-brand-50 border border-brand-200 text-brand-700 text-xs font-semibold mb-6 shadow-xs">
+                                    <i data-lucide="sparkles" className="w-3.5 h-3.5 text-brand-500"></i>
+                                    Next-Gen College Placement SaaS Platform
+                                </div>
+                                <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-slate-900 tracking-tight leading-tight">
+                                    Transform Your College Placement Process with <span className="bg-gradient-to-r from-brand-600 to-indigo-600 bg-clip-text text-transparent">AI</span>
+                                </h1>
+                                <p className="mt-6 text-lg text-slate-600 leading-relaxed font-normal">
+                                    Manage students, companies, applications, interviews, and placement analytics from one intelligent, unified cloud platform.
+                                </p>
+                                <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-4">
+                                    <button 
+                                        onClick={() => onGetStarted('student')}
+                                        className="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-semibold shadow-lg shadow-brand-500/25 transition transform hover:-translate-y-0.5 flex items-center justify-center gap-2"
+                                    >
+                                        Student Portal
+                                        <i data-lucide="arrow-right" className="w-4 h-4"></i>
+                                    </button>
+                                    <button 
+                                        onClick={() => onGetStarted('tpo')}
+                                        className="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-white hover:bg-slate-100 text-slate-800 font-semibold border border-slate-200 shadow-xs transition flex items-center justify-center gap-2"
+                                    >
+                                        TPO / Officer Login
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Dynamic Live Stats Strip */}
+                            <div className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto">
+                                {[
+                                    { label: "Students Onboarded", val: "5,000+" },
+                                    { label: "Partner Recruiters", val: "120+" },
+                                    { label: "Average Placement Rate", val: "88%" },
+                                    { label: "Highest Package Offered", val: "₹42 LPA" }
+                                ].map((stat, i) => (
+                                    <div key={i} className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs text-center">
+                                        <div className="text-2xl sm:text-3xl font-extrabold text-brand-700">{stat.val}</div>
+                                        <div className="text-xs text-slate-500 font-medium mt-1">{stat.label}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* Feature Cards Grid */}
+                    <section className="py-16 bg-white border-y border-slate-200/80">
+                        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                            <div className="text-center max-w-2xl mx-auto mb-12">
+                                <h2 className="text-2xl sm:text-3xl font-bold text-slate-900">Engineered for Academic Excellence</h2>
+                                <p className="text-slate-600 text-sm mt-2">Comprehensive suite tailored for Students, Placement Cells, and College Management.</p>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                {[
+                                    { icon: "file-search", title: "AI Resume Analyzer", desc: "Instantly score resumes against ATS standards and identify missing keywords." },
+                                    { icon: "target", title: "Smart Job Matching", desc: "Automated match percentage generator comparing student profiles against job criteria." },
+                                    { icon: "trending-up", title: "Skill Gap Analysis", desc: "Compare current proficiency against industry job specs with actionable learning roadmaps." },
+                                    { icon: "bot", title: "AI Interview Coach", desc: "Custom question generation for Technical, DSA, System Design & Behavioral rounds." },
+                                    { icon: "users", title: "Student Management", desc: "Centralized repository with CGPA filtering, backlog counts, and export features." },
+                                    { icon: "building-2", title: "Company Drive Portal", desc: "Post recruitment drives with automated eligibility verification guards." },
+                                    { icon: "bar-chart-3", title: "Placement Analytics", desc: "Interactive department-wise salary distribution and selection charts." },
+                                    { icon: "bell-ring", title: "Real-time Alerts", desc: "Instant notifications for shortlist updates, assessments, and interview schedules." }
+                                ].map((f, i) => (
+                                    <div key={i} className="p-6 rounded-2xl bg-slate-50 border border-slate-200/80 hover:border-brand-300 hover:shadow-md transition group">
+                                        <div className="w-10 h-10 rounded-xl bg-brand-100 text-brand-700 flex items-center justify-center mb-4 group-hover:bg-brand-600 group-hover:text-white transition">
+                                            <i data-lucide={f.icon} className="w-5 h-5"></i>
+                                        </div>
+                                        <h3 className="font-bold text-slate-900 text-base mb-1">{f.title}</h3>
+                                        <p className="text-xs text-slate-600 leading-relaxed">{f.desc}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* Workflow Section */}
+                    <section className="py-16 bg-slate-50">
+                        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                            <div className="text-center max-w-2xl mx-auto mb-12">
+                                <h2 className="text-2xl sm:text-3xl font-bold text-slate-900">How CampusHire AI Works</h2>
+                                <p className="text-slate-600 text-sm mt-2">End-to-end automated placement workflow in 6 simple steps.</p>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                                {[
+                                    { step: "01", title: "Profile Creation", desc: "Student completes academic records and skill matrix." },
+                                    { step: "02", title: "Resume Upload", desc: "Upload PDF/Docx resume for real-time AI ATS scoring." },
+                                    { step: "03", title: "AI Skill Gap Analysis", desc: "Identify missing competencies for desired tech roles." },
+                                    { step: "04", title: "Discover Drives", desc: "Discover matching drives with auto eligibility checks." },
+                                    { step: "05", title: "One-Click Apply", desc: "Apply directly and track recruitment status timeline." },
+                                    { step: "06", title: "Placement & Offers", desc: "Receive interview schedules and offer confirmations." }
+                                ].map((st, i) => (
+                                    <div key={i} className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs relative">
+                                        <span className="text-3xl font-black text-brand-200 absolute top-4 right-5">{st.step}</span>
+                                        <h4 className="font-bold text-slate-800 text-lg mb-2">{st.title}</h4>
+                                        <p className="text-xs text-slate-500 leading-relaxed">{st.desc}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </section>
+
+                    {/* Footer */}
+                    <footer className="mt-auto bg-slate-900 text-slate-400 text-xs py-10">
+                        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6">
+                            <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-lg bg-brand-600 text-white flex items-center justify-center font-bold">CH</div>
+                                <span className="font-bold text-white text-sm">CampusHire AI Platform</span>
+                            </div>
+                            <p>© 2026 CampusHire AI. Built for Modern Educational Institutions.</p>
+                            <div className="flex gap-6">
+                                <button onClick={() => onNavigate('docs')} className="hover:text-white transition">Documentation</button>
+                                <button onClick={() => onNavigate('docs')} className="hover:text-white transition">Firestore Schema</button>
+                                <button onClick={() => onNavigate('docs')} className="hover:text-white transition">API REST Endpoints</button>
+                            </div>
+                        </div>
+                    </footer>
+                </div>
+            );
+        };
+
+        
+        const StudentDashboard = ({ currentUser, companies, applications, announcements, onTriggerToast }) => {
+            const [activeTab, setActiveTab] = useState('overview');
+            const [userProfile, setUserProfile] = useState({ ...currentUser });
+            const [skills, setSkills] = useState([
+                { name: "Java", category: "Backend", level: 80 },
+                { name: "React", category: "Frontend", level: 75 },
+                { name: "SQL", category: "Database", level: 70 },
+                { name: "Python", category: "AI/ML", level: 65 },
+                { name: "REST APIs", category: "Backend", level: 85 }
+            ]);
+            const [newSkill, setNewSkill] = useState({ name: "", category: "Backend", level: 70 });
+            
+            // AI Analysis States
+            const [aiTargetRole, setAiTargetRole] = useState("Java Backend Developer");
+            const [analyzingResume, setAnalyzingResume] = useState(false);
+            const [resumeAnalysis, setResumeAnalysis] = useState(null);
+            const [skillGapResult, setSkillGapResult] = useState(null);
+            const [analyzingSkills, setAnalyzingSkills] = useState(false);
+
+            // AI Prep & Chat
+            const [prepRole, setPrepRole] = useState("Software Engineer");
+            const [interviewPrep, setInterviewPrep] = useState(null);
+            const [loadingPrep, setLoadingPrep] = useState(false);
+            const [chatQuery, setChatQuery] = useState("");
+            const [chatMessages, setChatMessages] = useState([
+                { role: 'assistant', text: "Hello Alex! I am your AI Career Assistant. How can I assist with your preparation today?" }
+            ]);
+
+            // Calculate Profile Completion %
+            const profileCompletion = useMemo(() => {
+                let score = 40;
+                if (userProfile.phone) score += 15;
+                if (userProfile.skills.length >= 4) score += 20;
+                if (userProfile.cgpa) score += 15;
+                if (userProfile.resumeUrl) score += 10;
+                return Math.min(score, 100);
+            }, [userProfile]);
+
+            // Handle Skill Add
+            const handleAddSkill = (e) => {
+                e.preventDefault();
+                if (!newSkill.name) return;
+                setSkills([...skills, { ...newSkill }]);
+                setUserProfile(prev => ({ ...prev, skills: [...prev.skills, newSkill.name] }));
+                setNewSkill({ name: "", category: "Backend", level: 70 });
+                onTriggerToast("Skill added successfully!", "success");
+            };
+
+            // Trigger AI Resume Analyzer Task
+            const handleAnalyzeResume = async () => {
+                setAnalyzingResume(true);
+                const res = await runAiService('RESUME_ANALYSIS', { profile: userProfile });
+                setResumeAnalysis(res);
+                setAnalyzingResume(false);
+                onTriggerToast("Resume ATS evaluation completed!", "success");
+            };
+
+            // Trigger AI Skill Gap Task
+            const handleAnalyzeSkillGap = async () => {
+                setAnalyzingSkills(true);
+                const res = await runAiService('SKILL_GAP', { targetRole: aiTargetRole, userSkills: skills.map(s => s.name) });
+                setSkillGapResult(res);
+                setAnalyzingSkills(false);
+                onTriggerToast("Skill gap report generated!", "success");
+            };
+
+            // Trigger AI Interview Prep Generator
+            const handleGeneratePrep = async () => {
+                setLoadingPrep(true);
+                const res = await runAiService('INTERVIEW_PREP', { role: prepRole });
+                setInterviewPrep(res);
+                setLoadingPrep(false);
+                onTriggerToast("Generated tailored technical questions!", "success");
+            };
+
+            // Trigger AI Chat
+            const handleSendChat = async (e) => {
+                e.preventDefault();
+                if (!chatQuery.trim()) return;
+                const userMsg = chatQuery;
+                setChatMessages(prev => [...prev, { role: 'user', text: userMsg }]);
+                setChatQuery("");
+
+                const reply = await runAiService('CHAT_ASSISTANT', { prompt: userMsg, profile: userProfile });
+                setChatMessages(prev => [...prev, { role: 'assistant', text: reply }]);
+            };
+
+            return (
+                <div className="flex flex-col lg:flex-row min-h-[calc(100vh-4rem)] bg-slate-100">
+                    {/* Student Sidebar Navigation */}
+                    <aside className="w-full lg:w-64 bg-white border-r border-slate-200/80 p-4 shrink-0">
+                        <div className="mb-6 px-3 py-2 bg-slate-50 rounded-xl border border-slate-200/80">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Student Portal</span>
+                            <div className="text-sm font-bold text-slate-800 truncate">{userProfile.name}</div>
+                            <div className="text-xs text-slate-500">{userProfile.studentId} • {userProfile.department}</div>
+                        </div>
+
+                        <nav className="space-y-1">
+                            {[
+                                { id: 'overview', label: 'Dashboard', icon: 'layout-dashboard' },
+                                { id: 'profile', label: 'My Profile', icon: 'user' },
+                                { id: 'resume', label: 'AI Resume Analyzer', icon: 'file-text' },
+                                { id: 'skills', label: 'Skills & Gap Analysis', icon: 'cpu' },
+                                { id: 'drives', label: 'Companies & Drives', icon: 'building-2' },
+                                { id: 'applications', label: 'My Applications', icon: 'briefcase' },
+                                { id: 'interview-prep', label: 'AI Interview Prep', icon: 'check-square' },
+                                { id: 'assistant', label: 'AI Career Coach', icon: 'bot' },
+                            ].map((item) => (
+                                <button
+                                    key={item.id}
+                                    onClick={() => setActiveTab(item.id)}
+                                    className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition ${
+                                        activeTab === item.id 
+                                            ? 'bg-brand-50 text-brand-700 border border-brand-200 shadow-xs' 
+                                            : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                                    }`}
+                                >
+                                    <i data-lucide={item.icon} className="w-4 h-4"></i>
+                                    {item.label}
+                                </button>
+                            ))}
+                        </nav>
+                    </aside>
+
+                    {/* Main Content Dashboard Area */}
+                    <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full custom-scrollbar">
+                        
+                        {/* TAB: OVERVIEW */}
+                        {activeTab === 'overview' && (
+                            <div className="space-y-6">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                    <div>
+                                        <h1 className="text-2xl font-extrabold text-slate-900">Welcome back, {userProfile.name}! 👋</h1>
+                                        <p className="text-xs text-slate-500 mt-1">Here is a quick overview of your placement readiness status.</p>
+                                    </div>
+                                    <button onClick={() => setActiveTab('drives')} className="inline-flex items-center gap-2 px-4 py-2 bg-brand-600 text-white rounded-xl text-xs font-semibold hover:bg-brand-700 transition shadow-xs">
+                                        <i data-lucide="search" className="w-4 h-4"></i>
+                                        Explore Campus Drives
+                                    </button>
+                                </div>
+
+                                {/* Overview Metrics Cards */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                    <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+                                        <div className="flex items-center justify-between text-xs text-slate-500 font-medium">
+                                            <span>Profile Completion</span>
+                                            <i data-lucide="user-check" className="w-4 h-4 text-brand-600"></i>
+                                        </div>
+                                        <div className="text-2xl font-bold text-slate-900 mt-2">{profileCompletion}%</div>
+                                        <div className="w-full bg-slate-100 rounded-full h-2 mt-3 overflow-hidden">
+                                            <div className="bg-brand-600 h-2 rounded-full transition-all" style={{ width: `${profileCompletion}%` }}></div>
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+                                        <div className="flex items-center justify-between text-xs text-slate-500 font-medium">
+                                            <span>Resume ATS Score</span>
+                                            <i data-lucide="file-check" className="w-4 h-4 text-emerald-600"></i>
+                                        </div>
+                                        <div className="text-2xl font-bold text-slate-900 mt-2">{userProfile.resumeScore}/100</div>
+                                        <div className="text-[11px] text-emerald-600 font-medium mt-2 flex items-center gap-1">
+                                            <i data-lucide="trending-up" className="w-3 h-3"></i> Top 15% in CSE Dept
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+                                        <div className="flex items-center justify-between text-xs text-slate-500 font-medium">
+                                            <span>Active Applications</span>
+                                            <i data-lucide="briefcase" className="w-4 h-4 text-amber-600"></i>
+                                        </div>
+                                        <div className="text-2xl font-bold text-slate-900 mt-2">{applications.length}</div>
+                                        <div className="text-[11px] text-slate-500 mt-2">2 Pending assessment round</div>
+                                    </div>
+
+                                    <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+                                        <div className="flex items-center justify-between text-xs text-slate-500 font-medium">
+                                            <span>Interviews Scheduled</span>
+                                            <i data-lucide="calendar" className="w-4 h-4 text-purple-600"></i>
+                                        </div>
+                                        <div className="text-2xl font-bold text-slate-900 mt-2">1</div>
+                                        <div className="text-[11px] text-purple-600 font-semibold mt-2">TechNova Solutions • Oct 15</div>
+                                    </div>
+                                </div>
+
+                                {/* Active Applications & Drives Row */}
+                                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                                    <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <h3 className="font-bold text-slate-800 text-sm">Application Timeline Tracker</h3>
+                                            <button onClick={() => setActiveTab('applications')} className="text-xs font-semibold text-brand-600 hover:underline">View All</button>
+                                        </div>
+
+                                        <div className="space-y-4">
+                                            {applications.map((app) => (
+                                                <div key={app.id} className="p-4 rounded-xl border border-slate-100 bg-slate-50/50">
+                                                    <div className="flex justify-between items-start mb-2">
+                                                        <div>
+                                                            <div className="font-bold text-slate-900 text-sm">{app.companyName}</div>
+                                                            <div className="text-xs text-slate-500">{app.role} • {app.package}</div>
+                                                        </div>
+                                                        <span className="px-2.5 py-1 bg-brand-100 text-brand-700 font-bold text-[10px] rounded-full">
+                                                            {app.status}
+                                                        </span>
+                                                    </div>
+
+                                                    {/* Progress Steps */}
+                                                    <div className="grid grid-cols-5 gap-1 mt-3">
+                                                        {['Applied', 'Shortlisted', 'Assessment', 'Interview', 'Selected'].map((step, idx) => (
+                                                            <div key={idx} className="text-center">
+                                                                <div className={`h-1.5 rounded-full ${idx <= app.stepIndex ? 'bg-brand-600' : 'bg-slate-200'}`}></div>
+                                                                <span className="text-[9px] text-slate-400 font-medium block mt-1">{step}</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+
+                                    {/* Placement Announcements Widget */}
+                                    <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs">
+                                        <h3 className="font-bold text-slate-800 text-sm mb-4 flex items-center gap-2">
+                                            <i data-lucide="bell" className="w-4 h-4 text-brand-600"></i>
+                                            Campus Announcements
+                                        </h3>
+                                        <div className="space-y-3">
+                                            {announcements.map((anc) => (
+                                                <div key={anc.id} className="p-3 bg-brand-50/50 rounded-xl border border-brand-100">
+                                                    <span className="text-[9px] font-bold uppercase text-brand-700 bg-brand-100 px-2 py-0.5 rounded-md">{anc.category}</span>
+                                                    <h4 className="text-xs font-bold text-slate-800 mt-1">{anc.title}</h4>
+                                                    <p className="text-[11px] text-slate-600 mt-1 line-clamp-2">{anc.content}</p>
+                                                    <span className="text-[10px] text-slate-400 mt-2 block">{anc.date}</span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* TAB: PROFILE EDITOR */}
+                        {activeTab === 'profile' && (
+                            <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs max-w-4xl">
+                                <h2 className="text-lg font-bold text-slate-900 mb-6 flex items-center gap-2">
+                                    <i data-lucide="user-cog" className="w-5 h-5 text-brand-600"></i>
+                                    Student Profile Details
+                                </h2>
+                                
+                                <form onSubmit={(e) => { e.preventDefault(); onTriggerToast("Profile updated successfully!", "success"); }} className="space-y-6">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="text-xs font-bold text-slate-600 block mb-1">Full Name</label>
+                                            <input type="text" value={userProfile.name} onChange={(e) => setUserProfile({...userProfile, name: e.target.value})} className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-brand-500 outline-none" />
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-bold text-slate-600 block mb-1">Student Register ID</label>
+                                            <input type="text" value={userProfile.studentId} disabled className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-500 font-medium cursor-not-allowed" />
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-bold text-slate-600 block mb-1">College Email</label>
+                                            <input type="email" value={userProfile.email} disabled className="w-full px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50 text-xs text-slate-500 font-medium cursor-not-allowed" />
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-bold text-slate-600 block mb-1">Phone Number</label>
+                                            <input type="text" value={userProfile.phone} onChange={(e) => setUserProfile({...userProfile, phone: e.target.value})} className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-brand-500 outline-none" />
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-bold text-slate-600 block mb-1">Department</label>
+                                            <select value={userProfile.department} onChange={(e) => setUserProfile({...userProfile, department: e.target.value})} className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-brand-500 outline-none">
+                                                <option value="CSE">Computer Science & Engineering (CSE)</option>
+                                                <option value="AI&DS">AI & Data Science (AI&DS)</option>
+                                                <option value="ECE">Electronics & Comm (ECE)</option>
+                                                <option value="EEE">Electrical & Electronics (EEE)</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="text-xs font-bold text-slate-600 block mb-1">Current CGPA</label>
+                                            <input type="number" step="0.1" value={userProfile.cgpa} onChange={(e) => setUserProfile({...userProfile, cgpa: parseFloat(e.target.value)})} className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-brand-500 outline-none" />
+                                        </div>
+                                    </div>
+
+                                    <div className="pt-4 border-t border-slate-100 flex justify-end">
+                                        <button type="submit" className="px-5 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold shadow-xs transition">
+                                            Save Profile Updates
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        )}
+
+                        {/* TAB: AI RESUME ANALYZER */}
+                        {activeTab === 'resume' && (
+                            <div className="space-y-6">
+                                <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs flex flex-col md:flex-row items-center justify-between gap-6">
+                                    <div className="flex items-center gap-4">
+                                        <div className="w-12 h-12 rounded-2xl bg-brand-100 text-brand-700 flex items-center justify-center shrink-0">
+                                            <i data-lucide="file-badge" className="w-6 h-6"></i>
+                                        </div>
+                                        <div>
+                                            <h3 className="font-bold text-slate-900 text-base">{userProfile.resumeUrl || "Alex_Rivera_Resume.pdf"}</h3>
+                                            <p className="text-xs text-slate-500">Uploaded on Oct 01, 2026 • PDF Document (1.2 MB)</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <button 
+                                            onClick={handleAnalyzeResume} 
+                                            disabled={analyzingResume}
+                                            className="px-5 py-2.5 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-xs flex items-center gap-2 disabled:opacity-50"
+                                        >
+                                            <i data-lucide={analyzingResume ? "loader-2" : "sparkles"} className={`w-4 h-4 ${analyzingResume ? 'animate-spin' : ''}`}></i>
+                                            {analyzingResume ? 'Evaluating Resume...' : 'Analyze with AI'}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {resumeAnalysis && (
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 animate-in fade-in">
+                                        {/* Score Overview */}
+                                        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs text-center">
+                                            <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">Overall ATS Compatibility</h4>
+                                            <div className="relative inline-flex items-center justify-center w-32 h-32 rounded-full bg-brand-50 border-4 border-brand-500 text-brand-700 text-3xl font-extrabold mb-4">
+                                                {resumeAnalysis.score}%
+                                            </div>
+                                            <div className="grid grid-cols-2 gap-2 text-left pt-4 border-t border-slate-100">
+                                                <div>
+                                                    <span className="text-[10px] text-slate-400 font-bold block">TECHNICAL</span>
+                                                    <span className="text-sm font-bold text-slate-800">{resumeAnalysis.technicalScore}/100</span>
+                                                </div>
+                                                <div>
+                                                    <span className="text-[10px] text-slate-400 font-bold block">FORMATTING</span>
+                                                    <span className="text-sm font-bold text-slate-800">{resumeAnalysis.formattingScore}/100</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Strengths & Weaknesses */}
+                                        <div className="md:col-span-2 bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-4">
+                                            <div>
+                                                <h4 className="text-xs font-bold text-emerald-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                                    <i data-lucide="check-circle-2" className="w-4 h-4"></i> Resume Strengths
+                                                </h4>
+                                                <ul className="space-y-1.5">
+                                                    {resumeAnalysis.strengths.map((str, idx) => (
+                                                        <li key={idx} className="text-xs text-slate-700 flex items-start gap-2">
+                                                            <span className="text-emerald-500 font-bold">✓</span> {str}
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+
+                                            <div className="pt-4 border-t border-slate-100">
+                                                <h4 className="text-xs font-bold text-amber-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                                    <i data-lucide="alert-circle" className="w-4 h-4"></i> Recommended Fixes
+                                                </h4>
+                                                <ul className="space-y-1.5">
+                                                    {resumeAnalysis.improvements.map((imp, idx) => (
+                                                        <li key={idx} className="text-xs text-slate-700 flex items-start gap-2">
+                                                            <span className="text-amber-500 font-bold">⚠</span> {imp}
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* TAB: SKILLS & GAP ANALYSIS */}
+                        {activeTab === 'skills' && (
+                            <div className="space-y-6">
+                                {/* Current Skills Matrix */}
+                                <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs">
+                                    <h3 className="font-bold text-slate-900 text-sm mb-4">My Technical Skill Matrix</h3>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+                                        {skills.map((s, idx) => (
+                                            <div key={idx} className="p-3.5 bg-slate-50 rounded-xl border border-slate-200/80">
+                                                <div className="flex justify-between items-center mb-1.5">
+                                                    <span className="font-bold text-slate-800 text-xs">{s.name}</span>
+                                                    <span className="text-[10px] text-slate-500 font-medium">{s.category}</span>
+                                                </div>
+                                                <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
+                                                    <div className="bg-brand-600 h-1.5 rounded-full" style={{ width: `${s.level}%` }}></div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* Add Skill Form */}
+                                    <form onSubmit={handleAddSkill} className="flex flex-wrap items-center gap-3 pt-4 border-t border-slate-100">
+                                        <input 
+                                            type="text" 
+                                            placeholder="Skill Name (e.g., Docker)" 
+                                            value={newSkill.name} 
+                                            onChange={(e) => setNewSkill({...newSkill, name: e.target.value})} 
+                                            className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs outline-none focus:ring-2 focus:ring-brand-500"
+                                        />
+                                        <select 
+                                            value={newSkill.category} 
+                                            onChange={(e) => setNewSkill({...newSkill, category: e.target.value})}
+                                            className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs outline-none"
+                                        >
+                                            <option value="Backend">Backend</option>
+                                            <option value="Frontend">Frontend</option>
+                                            <option value="Database">Database</option>
+                                            <option value="DevOps">DevOps</option>
+                                            <option value="AI/ML">AI/ML</option>
+                                        </select>
+                                        <button type="submit" className="px-4 py-1.5 bg-slate-800 text-white rounded-xl text-xs font-bold hover:bg-slate-900 transition">
+                                            + Add Skill
+                                        </button>
+                                    </form>
+                                </div>
+
+                                {/* AI Skill Gap Analysis Launcher */}
+                                <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs">
+                                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+                                        <div>
+                                            <h3 className="font-bold text-slate-900 text-base">AI Skill Gap Analysis</h3>
+                                            <p className="text-xs text-slate-500 mt-0.5">Benchmark your current skillset against industry target roles.</p>
+                                        </div>
+
+                                        <div className="flex items-center gap-3 w-full sm:w-auto">
+                                            <select 
+                                                value={aiTargetRole} 
+                                                onChange={(e) => setAiTargetRole(e.target.value)}
+                                                className="px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold outline-none focus:ring-2 focus:ring-brand-500"
+                                            >
+                                                {Object.keys(TARGET_ROLE_SKILLS).map(role => (
+                                                    <option key={role} value={role}>{role}</option>
+                                                ))}
+                                            </select>
+
+                                            <button 
+                                                onClick={handleAnalyzeSkillGap} 
+                                                disabled={analyzingSkills}
+                                                className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-xs shrink-0"
+                                            >
+                                                {analyzingSkills ? 'Analyzing...' : 'Run Gap Analysis'}
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {skillGapResult && (
+                                        <div className="space-y-4 pt-4 border-t border-slate-100 animate-in fade-in">
+                                            <div className="flex items-center justify-between p-4 bg-brand-50 rounded-xl border border-brand-100">
+                                                <div>
+                                                    <span className="text-xs font-bold text-brand-900">Target Role Match Score</span>
+                                                    <div className="text-xl font-extrabold text-brand-700">{skillGapResult.matchPercent}% Fit</div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <span className="text-[10px] text-slate-500 font-bold block">MISSING COMPETENCIES</span>
+                                                    <span className="text-xs font-bold text-red-600">{skillGapResult.missingSkills.join(", ") || "None!"}</span>
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <h4 className="text-xs font-bold text-slate-800 uppercase mb-2">Recommended Learning Roadmap</h4>
+                                                <div className="space-y-2">
+                                                    {skillGapResult.roadmap.map((step, idx) => (
+                                                        <div key={idx} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200/80 text-xs text-slate-700">
+                                                            <span className="w-5 h-5 rounded-full bg-brand-600 text-white font-bold text-[10px] flex items-center justify-center">{idx+1}</span>
+                                                            {step}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* TAB: COMPANIES & DRIVES */}
+                        {activeTab === 'drives' && (
+                            <div className="space-y-6">
+                                <div className="flex justify-between items-center">
+                                    <h2 className="text-xl font-bold text-slate-900">Active Campus Drives</h2>
+                                    <span className="text-xs text-slate-500 font-medium">{companies.length} Recruitment Drives Available</span>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {companies.map((comp) => {
+                                        // Eligibility Guard Check
+                                        const isEligible = userProfile.cgpa >= comp.minCgpa && userProfile.backlogs <= comp.maxBacklogs;
+                                        const hasApplied = applications.some(a => a.companyId === comp.id);
+
+                                        return (
+                                            <div key={comp.id} className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs flex flex-col justify-between">
+                                                <div>
+                                                    <div className="flex items-start justify-between gap-3 mb-3">
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="text-3xl">{comp.logo}</div>
+                                                            <div>
+                                                                <h3 className="font-bold text-slate-900 text-base">{comp.name}</h3>
+                                                                <span className="text-xs font-semibold text-brand-600">{comp.role}</span>
+                                                            </div>
+                                                        </div>
+                                                        <span className="px-2.5 py-1 bg-slate-100 text-slate-700 font-bold text-[10px] rounded-lg">
+                                                            {comp.package}
+                                                        </span>
+                                                    </div>
+
+                                                    <p className="text-xs text-slate-600 line-clamp-2 mb-4">{comp.description}</p>
+
+                                                    <div className="space-y-2 mb-4">
+                                                        <div className="text-[11px] text-slate-500 flex items-center gap-2">
+                                                            <i data-lucide="map-pin" className="w-3.5 h-3.5 text-slate-400"></i> {comp.location}
+                                                        </div>
+                                                        <div className="text-[11px] text-slate-500 flex items-center gap-2">
+                                                            <i data-lucide="check-square" className="w-3.5 h-3.5 text-slate-400"></i> Min CGPA: {comp.minCgpa} | Backlogs Allowed: {comp.maxBacklogs}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Skill Badges */}
+                                                    <div className="flex flex-wrap gap-1.5 mb-6">
+                                                        {comp.skills.map((sk, idx) => (
+                                                            <span key={idx} className="px-2 py-0.5 bg-slate-100 text-slate-600 font-medium text-[10px] rounded-md">
+                                                                {sk}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+
+                                                <div className="pt-4 border-t border-slate-100 flex items-center justify-between">
+                                                    {!isEligible ? (
+                                                        <span className="text-xs text-red-600 font-bold flex items-center gap-1">
+                                                            <i data-lucide="x-circle" className="w-4 h-4"></i> Not Eligible (CGPA &lt; {comp.minCgpa})
+                                                        </span>
+                                                    ) : hasApplied ? (
+                                                        <span className="text-xs text-emerald-600 font-bold flex items-center gap-1">
+                                                            <i data-lucide="check-circle" className="w-4 h-4"></i> Application Submitted
+                                                        </span>
+                                                    ) : (
+                                                        <button 
+                                                            onClick={() => onTriggerToast(`Applied successfully to ${comp.name}!`, "success")}
+                                                            className="w-full py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-xs"
+                                                        >
+                                                            Apply Now
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* TAB: APPLICATIONS */}
+                        {activeTab === 'applications' && (
+                            <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs">
+                                <h2 className="text-lg font-bold text-slate-900 mb-6">My Drive Applications</h2>
+                                <div className="divide-y divide-slate-100">
+                                    {applications.map((app) => (
+                                        <div key={app.id} className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                            <div>
+                                                <h4 className="font-bold text-slate-900 text-sm">{app.companyName}</h4>
+                                                <p className="text-xs text-slate-500">{app.role} • Applied on {app.appliedDate}</p>
+                                            </div>
+                                            <div className="flex items-center gap-4">
+                                                <span className="px-3 py-1 bg-brand-100 text-brand-700 font-bold text-xs rounded-full">
+                                                    {app.status}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* TAB: AI INTERVIEW PREP */}
+                        {activeTab === 'interview-prep' && (
+                            <div className="space-y-6">
+                                <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
+                                    <div>
+                                        <h3 className="font-bold text-slate-900 text-base">AI Technical Question Generator</h3>
+                                        <p className="text-xs text-slate-500 mt-0.5">Generate tailored technical and DSA questions for technical rounds.</p>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                        <input 
+                                            type="text" 
+                                            value={prepRole} 
+                                            onChange={(e) => setPrepRole(e.target.value)} 
+                                            className="px-3.5 py-2 rounded-xl border border-slate-200 text-xs font-medium outline-none"
+                                        />
+                                        <button 
+                                            onClick={handleGeneratePrep}
+                                            disabled={loadingPrep}
+                                            className="px-5 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition shadow-xs"
+                                        >
+                                            {loadingPrep ? 'Generating...' : 'Generate Questions'}
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {interviewPrep && (
+                                    <div className="space-y-4">
+                                        {interviewPrep.questions.map((q, idx) => (
+                                            <div key={idx} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+                                                <span className="text-[10px] font-bold uppercase tracking-wider text-brand-600 bg-brand-50 px-2 py-0.5 rounded-md">{q.category}</span>
+                                                <h4 className="font-bold text-slate-800 text-sm mt-2">{q.question}</h4>
+                                                <p className="text-xs text-slate-500 mt-2 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                                                    <span className="font-bold text-slate-700">Expected Key Concept: </span>{q.answerKey}
+                                                </p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* TAB: AI CAREER ASSISTANT CHAT */}
+                        {activeTab === 'assistant' && (
+                            <div className="bg-white rounded-2xl border border-slate-200 h-[500px] flex flex-col shadow-xs overflow-hidden">
+                                <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-xl bg-brand-600 text-white flex items-center justify-center font-bold">
+                                        <i data-lucide="bot" className="w-4 h-4"></i>
+                                    </div>
+                                    <div>
+                                        <h3 className="font-bold text-slate-800 text-sm">CampusHire AI Career Coach</h3>
+                                        <span className="text-[10px] text-emerald-600 font-semibold flex items-center gap-1">
+                                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Online
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div className="flex-1 p-4 overflow-y-auto space-y-3 custom-scrollbar">
+                                    {chatMessages.map((msg, idx) => (
+                                        <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                            <div className={`max-w-md p-3.5 rounded-2xl text-xs leading-relaxed ${
+                                                msg.role === 'user' 
+                                                    ? 'bg-brand-600 text-white rounded-br-none' 
+                                                    : 'bg-slate-100 text-slate-800 rounded-bl-none'
+                                            }`}>
+                                                {msg.text}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                <form onSubmit={handleSendChat} className="p-3 border-t border-slate-100 flex gap-2 bg-slate-50">
+                                    <input 
+                                        type="text" 
+                                        placeholder="Ask career, resume or interview questions..." 
+                                        value={chatQuery} 
+                                        onChange={(e) => setChatQuery(e.target.value)}
+                                        className="flex-1 px-4 py-2 rounded-xl border border-slate-200 text-xs outline-none focus:ring-2 focus:ring-brand-500"
+                                    />
+                                    <button type="submit" className="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-xl text-xs font-bold transition">
+                                        Send
+                                    </button>
+                                </form>
+                            </div>
+                        )}
+                    </main>
+                </div>
+            );
+        };
+
+        
+        const TpoDashboard = ({ students, companies, onTriggerToast }) => {
+            const [activeTab, setActiveTab] = useState('analytics');
+            const [searchTerm, setSearchTerm] = useState('');
+            const [filterDept, setFilterDept] = useState('ALL');
+
+            // Analytics Aggregations
+            const deptData = [
+                { name: 'CSE', Placed: 42, Unplaced: 8 },
+                { name: 'AI&DS', Placed: 35, Unplaced: 5 },
+                { name: 'ECE', Placed: 28, Unplaced: 12 },
+                { name: 'EEE', Placed: 18, Unplaced: 15 }
+            ];
+
+            const filteredStudents = students.filter(s => {
+                const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) || s.studentId.toLowerCase().includes(searchTerm.toLowerCase());
+                const matchesDept = filterDept === 'ALL' || s.department === filterDept;
+                return matchesSearch && matchesDept;
+            });
+
+            return (
+                <div className="flex flex-col lg:flex-row min-h-[calc(100vh-4rem)] bg-slate-100">
+                    {/* TPO Sidebar */}
+                    <aside className="w-full lg:w-64 bg-white border-r border-slate-200/80 p-4 shrink-0">
+                        <div className="mb-6 px-3 py-2 bg-slate-50 rounded-xl border border-slate-200/80">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">TPO Officer Portal</span>
+                            <div className="text-sm font-bold text-slate-800">Dr. Robert Vance</div>
+                            <div className="text-xs text-slate-500">Head Officer</div>
+                        </div>
+
+                        <nav className="space-y-1">
+                            {[
+                                { id: 'analytics', label: 'Placement Analytics', icon: 'bar-chart-3' },
+                                { id: 'students', label: 'Student Directory', icon: 'users' },
+                                { id: 'drives', label: 'Manage Drives', icon: 'building-2' },
+                                { id: 'announcements', label: 'Post Announcements', icon: 'megaphone' }
+                            ].map((item) => (
+                                <button
+                                    key={item.id}
+                                    onClick={() => setActiveTab(item.id)}
+                                    className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition ${
+                                        activeTab === item.id 
+                                            ? 'bg-brand-50 text-brand-700 border border-brand-200 shadow-xs' 
+                                            : 'text-slate-600 hover:bg-slate-50'
+                                    }`}
+                                >
+                                    <i data-lucide={item.icon} className="w-4 h-4"></i>
+                                    {item.label}
+                                </button>
+                            ))}
+                        </nav>
+                    </aside>
+
+                    {/* Main TPO Workspace */}
+                    <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto w-full custom-scrollbar">
+                        
+                        {/* TAB: ANALYTICS */}
+                        {activeTab === 'analytics' && (
+                            <div className="space-y-6">
+                                <h1 className="text-2xl font-extrabold text-slate-900">Placement Cell Analytics Overview</h1>
+
+                                {/* Stats Bar */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                                    <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+                                        <span className="text-xs text-slate-500 font-medium">Total Registered</span>
+                                        <div className="text-2xl font-bold text-slate-900 mt-1">163 Students</div>
+                                    </div>
+                                    <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+                                        <span className="text-xs text-slate-500 font-medium">Placement Rate</span>
+                                        <div className="text-2xl font-bold text-emerald-600 mt-1">84.2%</div>
+                                    </div>
+                                    <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+                                        <span className="text-xs text-slate-500 font-medium">Highest Package</span>
+                                        <div className="text-2xl font-bold text-brand-700 mt-1">₹18 LPA</div>
+                                    </div>
+                                    <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+                                        <span className="text-xs text-slate-500 font-medium">Active Partner Drives</span>
+                                        <div className="text-2xl font-bold text-slate-900 mt-1">{companies.length} Drives</div>
+                                    </div>
+                                </div>
+
+                                {/* Recharts Visualizations */}
+                                <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
+                                    <h3 className="font-bold text-slate-800 text-sm mb-4">Department-wise Placed vs Unplaced Students</h3>
+                                    <div className="h-72 w-full">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart data={deptData}>
+                                                <CartesianGrid strokeDasharray="3 3" />
+                                                <XAxis dataKey="name" />
+                                                <YAxis />
+                                                <Tooltip />
+                                                <Bar dataKey="Placed" fill="#2563eb" radius={[4, 4, 0, 0]} />
+                                                <Bar dataKey="Unplaced" fill="#cbd5e1" radius={[4, 4, 0, 0]} />
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* TAB: STUDENT DIRECTORY */}
+                        {activeTab === 'students' && (
+                            <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
+                                <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                                    <h2 className="text-lg font-bold text-slate-900">Registered Students Directory</h2>
+                                    <button onClick={() => onTriggerToast("Exporting student report as CSV...", "info")} className="px-4 py-2 bg-slate-800 text-white rounded-xl text-xs font-bold hover:bg-slate-900 transition">
+                                        Export CSV Report
+                                    </button>
+                                </div>
+
+                                {/* Filters */}
+                                <div className="flex flex-wrap gap-3">
+                                    <input 
+                                        type="text" 
+                                        placeholder="Search by name or Register ID..." 
+                                        value={searchTerm} 
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        className="px-3.5 py-2 rounded-xl border border-slate-200 text-xs outline-none flex-1 min-w-[200px]"
+                                    />
+                                    <select 
+                                        value={filterDept} 
+                                        onChange={(e) => setFilterDept(e.target.value)}
+                                        className="px-3.5 py-2 rounded-xl border border-slate-200 text-xs outline-none font-medium"
+                                    >
+                                        <option value="ALL">All Departments</option>
+                                        <option value="CSE">CSE</option>
+                                        <option value="AI&DS">AI&DS</option>
+                                        <option value="ECE">ECE</option>
+                                        <option value="EEE">EEE</option>
+                                    </select>
+                                </div>
+
+                                {/* Table */}
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left text-xs">
+                                        <thead className="bg-slate-50 text-slate-500 uppercase font-bold border-b border-slate-200">
+                                            <tr>
+                                                <th className="p-3">Student Name</th>
+                                                <th className="p-3">Reg ID</th>
+                                                <th className="p-3">Dept</th>
+                                                <th className="p-3">CGPA</th>
+                                                <th className="p-3">Status</th>
+                                                <th className="p-3">Action</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-100 font-medium">
+                                            {filteredStudents.map((st) => (
+                                                <tr key={st.id} className="hover:bg-slate-50 transition">
+                                                    <td className="p-3 font-bold text-slate-800">{st.name}</td>
+                                                    <td className="p-3 text-slate-500">{st.studentId}</td>
+                                                    <td className="p-3 text-slate-700">{st.department}</td>
+                                                    <td className="p-3 font-bold text-slate-900">{st.cgpa}</td>
+                                                    <td className="p-3">
+                                                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                                            st.status === 'Selected' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-700'
+                                                        }`}>
+                                                            {st.status}
+                                                        </span>
+                                                    </td>
+                                                    <td className="p-3">
+                                                        <button onClick={() => onTriggerToast(`Viewing details for ${st.name}`, "info")} className="text-brand-600 font-bold hover:underline">
+                                                            View Profile
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* TAB: MANAGE DRIVES */}
+                        {activeTab === 'drives' && (
+                            <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
+                                <div className="flex justify-between items-center">
+                                    <h2 className="text-lg font-bold text-slate-900">Active Recruitment Drives</h2>
+                                    <button onClick={() => onTriggerToast("Drive post window opened", "info")} className="px-4 py-2 bg-brand-600 text-white rounded-xl text-xs font-bold hover:bg-brand-700 transition">
+                                        + Post New Drive
+                                    </button>
+                                </div>
+
+                                <div className="space-y-3">
+                                    {companies.map((c) => (
+                                        <div key={c.id} className="p-4 rounded-xl border border-slate-200 flex justify-between items-center">
+                                            <div>
+                                                <h4 className="font-bold text-slate-800 text-sm">{c.name}</h4>
+                                                <p className="text-xs text-slate-500">{c.role} • Min CGPA: {c.minCgpa} • Package: {c.package}</p>
+                                            </div>
+                                            <span className="px-3 py-1 bg-emerald-100 text-emerald-700 font-bold text-xs rounded-full">ACTIVE</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* TAB: ANNOUNCEMENTS */}
+                        {activeTab === 'announcements' && (
+                            <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs max-w-2xl space-y-4">
+                                <h2 className="text-lg font-bold text-slate-900">Broadcast Campus Announcement</h2>
+                                <form onSubmit={(e) => { e.preventDefault(); onTriggerToast("Announcement published to student portals!", "success"); }} className="space-y-4">
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-600 block mb-1">Title</label>
+                                        <input type="text" placeholder="e.g. Amazon Placement Drive Registration" required className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs outline-none focus:ring-2 focus:ring-brand-500" />
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-600 block mb-1">Target Audience</label>
+                                        <select className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs outline-none">
+                                            <option>All Final Year Students</option>
+                                            <option>CSE & AI&DS Only</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-600 block mb-1">Announcement Body</label>
+                                        <textarea rows={4} placeholder="Type announcement details..." required className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-xs outline-none focus:ring-2 focus:ring-brand-500"></textarea>
+                                    </div>
+                                    <button type="submit" className="px-5 py-2.5 bg-brand-600 hover:bg-brand-700 text-white font-bold text-xs rounded-xl transition shadow-xs">
+                                        Broadcast Announcement
+                                    </button>
+                                </form>
+                            </div>
+                        )}
+                    </main>
+                </div>
+            );
+        };
+
+        
+        const AdminDashboard = ({ onTriggerToast }) => {
+            return (
+                <div className="max-w-7xl mx-auto p-6 space-y-6">
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <h1 className="text-2xl font-extrabold text-slate-900">System Administration & Audit</h1>
+                            <p className="text-xs text-slate-500 mt-1">Platform operational status and role provisioning.</p>
+                        </div>
+                        <span className="px-3 py-1 bg-emerald-100 text-emerald-700 text-xs font-bold rounded-full">SYSTEM HEALTH: 100% OPERATIONAL</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
+                            <h3 className="font-bold text-slate-800 text-sm mb-4">User Provisioning</h3>
+                            <button onClick={() => onTriggerToast("Account provisioning modal open", "info")} className="w-full py-2.5 bg-brand-600 text-white text-xs font-bold rounded-xl hover:bg-brand-700 transition">
+                                + Provision TPO Account
+                            </button>
+                        </div>
+
+                        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
+                            <h3 className="font-bold text-slate-800 text-sm mb-4">AI Engine Configuration</h3>
+                            <p className="text-xs text-slate-500 mb-3">Model: Gemini 3 Flash / Fallback Mode Active</p>
+                            <button onClick={() => onTriggerToast("AI settings updated", "success")} className="w-full py-2.5 bg-slate-800 text-white text-xs font-bold rounded-xl hover:bg-slate-900 transition">
+                                Configure API Key
+                            </button>
+                        </div>
+
+                        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
+                            <h3 className="font-bold text-slate-800 text-sm mb-4">System Audit Logs</h3>
+                            <div className="text-[11px] text-slate-500 space-y-2">
+                                <div>• TPO Robert Vance posted announcement (10 mins ago)</div>
+                                <div>• Student Alex Rivera completed ATS scan (25 mins ago)</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        
+        const DocumentationPage = () => {
+            return (
+                <div className="max-w-5xl mx-auto px-4 py-10 space-y-8">
+                    <div>
+                        <h1 className="text-3xl font-extrabold text-slate-900">Architecture & Technical Specs</h1>
+                        <p className="text-slate-600 text-sm mt-1">Database Schema, API Endpoints, and Production Deployment Guide for CampusHire AI.</p>
+                    </div>
+
+                    {/* Firestore Collection Blueprint */}
+                    <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
+                        <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                            <i data-lucide="database" className="w-5 h-5 text-brand-600"></i>
+                            Firebase Firestore Collection Schema
+                        </h2>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {[
+                                { col: "/artifacts/{appId}/public/data/students", desc: "Student academic records, skills matrix, CGPA, backlog counts, resume score." },
+                                { col: "/artifacts/{appId}/public/data/companies", desc: "Recruitment drive postings, eligibility rules, salary packages, deadlines." },
+                                { col: "/artifacts/{appId}/public/data/applications", desc: "Application status tracker, recruitment step indices, submission timestamps." },
+                                { col: "/artifacts/{appId}/public/data/announcements", desc: "Placement drive broadcasts, assessment schedules, target department flags." }
+                            ].map((sc, i) => (
+                                <div key={i} className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-xs">
+                                    <div className="font-mono font-bold text-brand-700">{sc.col}</div>
+                                    <p className="text-slate-600 mt-1">{sc.desc}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* REST API Endpoints */}
+                    <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
+                        <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                            <i data-lucide="network" className="w-5 h-5 text-brand-600"></i>
+                            REST API Architecture Overview
+                        </h2>
+
+                        <div className="space-y-2 text-xs font-mono">
+                            <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200 flex justify-between">
+                                <span className="font-bold text-emerald-700">POST /api/v1/ai/analyze-resume</span>
+                                <span className="text-slate-500 font-sans">Trigger ATS keyword analysis</span>
+                            </div>
+                            <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200 flex justify-between">
+                                <span className="font-bold text-blue-700">GET /api/v1/students/skill-gap</span>
+                                <span className="text-slate-500 font-sans">Compare skills against target role</span>
+                            </div>
+                            <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200 flex justify-between">
+                                <span className="font-bold text-purple-700">POST /api/v1/drives/apply</span>
+                                <span className="text-slate-500 font-sans">Submit job drive application</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        
+        const LoginPage = ({ onLogin, onNavigate }) => {
+            const [role, setRole] = useState('student');
+
+            return (
+                <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center bg-slate-100 p-4">
+                    <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-xl max-w-md w-full space-y-6">
+                        <div className="text-center">
+                            <h2 className="text-2xl font-extrabold text-slate-900">Sign In to CampusHire AI</h2>
+                            <p className="text-xs text-slate-500 mt-1">Select demo role to instantly launch preview portal</p>
+                        </div>
+
+                        {/* Instant Role Selection Switch */}
+                        <div className="grid grid-cols-3 gap-2 bg-slate-100 p-1.5 rounded-2xl">
+                            {['student', 'tpo', 'admin'].map((r) => (
+                                <button
+                                    key={r}
+                                    onClick={() => setRole(r)}
+                                    className={`py-2 text-xs font-bold uppercase rounded-xl transition ${
+                                        role === r ? 'bg-white text-brand-700 shadow-xs' : 'text-slate-500'
+                                    }`}
+                                >
+                                    {r}
+                                </button>
+                            ))}
+                        </div>
+
+                        <div className="p-3 bg-brand-50 rounded-xl border border-brand-100 text-xs text-brand-900 font-medium">
+                            <span className="font-bold">Demo Account Credentials:</span>
+                            <div className="mt-1 text-[11px] font-mono">Email: {role}@campushire.demo</div>
+                            <div className="text-[11px] font-mono">Pass: Demo123</div>
+                        </div>
+
+                        <button 
+                            onClick={() => onLogin(role)} 
+                            className="w-full py-3 bg-brand-600 hover:bg-brand-700 text-white rounded-xl font-bold text-xs shadow-md shadow-brand-500/20 transition"
+                        >
+                            Launch {role.toUpperCase()} Workspace
+                        </button>
+                    </div>
+                </div>
+            );
+        };
+
+        
+        const App = () => {
+            const [view, setView] = useState('landing'); // 'landing', 'login', 'dashboard', 'docs'
+            const [activeRole, setActiveRole] = useState('STUDENT');
+            const [currentUser, setCurrentUser] = useState(null);
+            const [toast, setToast] = useState(null);
+
+            // Seed Data State
+            const [students] = useState(INITIAL_STUDENTS);
+            const [companies] = useState(INITIAL_COMPANIES);
+            const [applications] = useState(INITIAL_APPLICATIONS);
+            const [announcements] = useState(INITIAL_ANNOUNCEMENTS);
+
+            // Toast Trigger Helper
+            const triggerToast = useCallback((message, type = 'success') => {
+                setToast({ message, type });
+                setTimeout(() => setToast(null), 3500);
+            }, []);
+
+            // Initialize Lucide Icons after DOM Updates
+            useEffect(() => {
+                if (window.lucide) {
+                    window.lucide.createIcons();
+                }
+            });
+
+            // Handle Direct Role Login
+            const handleLogin = (roleKey) => {
+                const userObj = DEMO_USERS[roleKey] || DEMO_USERS.student;
+                setCurrentUser(userObj);
+                setActiveRole(userObj.role);
+                setView('dashboard');
+                triggerToast(`Logged in successfully as ${userObj.name}`, "success");
+            };
+
+            const handleSwitchRole = (roleKey) => {
+                const userObj = DEMO_USERS[roleKey] || DEMO_USERS.student;
+                setCurrentUser(userObj);
+                setActiveRole(userObj.role);
+                triggerToast(`Switched active view to ${roleKey.toUpperCase()}`, "info");
+            };
+
+            const handleLogout = () => {
+                setCurrentUser(null);
+                setView('landing');
+                triggerToast("Logged out successfully", "info");
+            };
+
+            return (
+                <div className="flex flex-col min-h-screen">
+                    <Navbar 
+                        currentUser={currentUser}
+                        activeRole={activeRole}
+                        onSwitchRole={handleSwitchRole}
+                        onNavigate={(v) => setView(v)}
+                        onLogout={handleLogout}
+                        notifications={announcements}
+                    />
+
+                    <div className="flex-1">
+                        {view === 'landing' && <LandingPage onGetStarted={(r) => handleLogin(r)} onNavigate={(v) => setView(v)} />}
+                        {view === 'login' && <LoginPage onLogin={handleLogin} onNavigate={(v) => setView(v)} />}
+                        {view === 'docs' && <DocumentationPage />}
+                        
+                        {view === 'dashboard' && currentUser && (
+                            <>
+                                {activeRole === 'STUDENT' && (
+                                    <StudentDashboard 
+                                        currentUser={currentUser}
+                                        companies={companies}
+                                        applications={applications}
+                                        announcements={announcements}
+                                        onTriggerToast={triggerToast}
+                                    />
+                                )}
+                                {activeRole === 'TPO' && (
+                                    <TpoDashboard 
+                                        students={students}
+                                        companies={companies}
+                                        onTriggerToast={triggerToast}
+                                    />
+                                )}
+                                {activeRole === 'ADMIN' && (
+                                    <AdminDashboard onTriggerToast={triggerToast} />
+                                )}
+                            </>
+                        )}
+                    </div>
+
+                    <Toast toast={toast} onClose={() => setToast(null)} />
+                </div>
+            );
+        };
+
+        const rootElement = document.getElementById('root');
+        const root = ReactDOM.createRoot(rootElement);
+        root.render(<App />);
+    </script>
+</body>
+</html>
